@@ -1,0 +1,10 @@
+*/.ipynb_checkpoints/*
+*/__pycache__/*
+*/desktop.ini
+
+data/*
+!data/demographics.xlsx
+
+simulation/*
+!simulation/Template_SetupFiles/*
+!simulation/Rajagopal_passiveCal_hipAbd.osim
