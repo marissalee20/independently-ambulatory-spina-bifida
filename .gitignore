@@ -1,6 +1,7 @@
 */.ipynb_checkpoints/*
 */__pycache__/*
 */desktop.ini
+desktop.ini
 
 data/*
 !data/demographics.xlsx
