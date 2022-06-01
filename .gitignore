@@ -7,7 +7,6 @@ data/*
 !data/demographics.xlsx
 
 simulation/*
-!simulation/Template_SetupFiles/*
-!simulation/Template_SetupFiles/*/*
-!simulation/Template_SetupFiles/*/*/*
+/simulation/*/
+!simulation/Template_SetupFiles/
 !simulation/Rajagopal_passiveCal_hipAbd.osim
