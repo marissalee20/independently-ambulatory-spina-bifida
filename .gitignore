@@ -1,6 +1,7 @@
 .ipynb_checkpoints/
 __pycache__/
 *desktop.ini
+ReadME.pdf
 
 data/*
 !data/demographics.xlsx
