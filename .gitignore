@@ -8,4 +8,6 @@ data/*
 
 simulation/*
 !simulation/Template_SetupFiles/*
+!simulation/Template_SetupFiles/*/*
+!simulation/Template_SetupFiles/*/*/*
 !simulation/Rajagopal_passiveCal_hipAbd.osim
