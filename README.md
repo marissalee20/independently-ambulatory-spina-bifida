@@ -43,4 +43,4 @@ TODO
 Please feel welcome to reach out to Marissa Lee ([marissalee@stanford.edu](marissalee@stanford.edu)) with any questions.
 
 # License
-Distributed under the BSD 3-clause License. See LICENSE for more information.
+Distributed under the BSD 3-clause License. See [LICENSE](https://github.com/marissalee20/independently-ambulatory-spina-bifida/blob/main/LICENSE) for more information.
