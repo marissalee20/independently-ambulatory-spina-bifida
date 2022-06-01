@@ -27,12 +27,12 @@ The generic model is described in [Uhlrich et al. 2022](https://doi.org/10.1038/
 # Musculoskeletal Simulations
 The musculoskeletal simulation pipeline is automated in MATLAB scripts. These scripts are largely based on previous scripts and code written by Apoorva Rajagopal and Scott Uhlrich. Their scripts can be viewed [here](https://simtk.org/projects/full_body) and [here](https://simtk.org/projects/coordretraining/).
 
-To run the entire simulation pipeline for a subject, execute code/run_all.m. This script reads in motion data from the data directory and makes simulations for all walks associated with the subject. Simulation setup files and results are saved in the simulation directory.
+To run the entire simulation pipeline for a subject, execute [code/run_all.m](https://github.com/marissalee20/independently-ambulatory-spina-bifida/blob/main/code/run_all.m). This script reads in motion data from the data directory and makes simulations for all walks associated with the subject. Simulation setup files and results are saved in the simulation directory.
 
-Mean and standard deviation IK errors and RRA residuals can be calculated by executing calculate_ik_errors.m and calculate_rra_residuals, respectively.
+Mean and standard deviation IK errors and RRA residuals can be calculated by executing [calculate_ik_errors.m](https://github.com/marissalee20/independently-ambulatory-spina-bifida/blob/main/code/calculate_ik_errors.m) and [calculate_rra_residuals](https://github.com/marissalee20/independently-ambulatory-spina-bifida/blob/main/code/calculate_rra_residuals.m), respectively.
 
 # Group Post-Processed Data
-All post-simulation analyses were performed in Python and can be found in code/postprocessing_analysis.ipynb. Helper code can be found in code/postprocessing_helpers.
+All post-simulation analyses were performed in Python and can be found in [code/postprocessing_analysis.ipynb](https://github.com/marissalee20/independently-ambulatory-spina-bifida/blob/main/code/postprocessing_analysis.ipynb). Helper code can be found in [code/postprocessing_helpers](https://github.com/marissalee20/independently-ambulatory-spina-bifida/tree/main/code/postprocessing_helpers).
 
 # Citation
 Please cite our paper in your publications if our repository helps your research.
