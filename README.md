@@ -1,5 +1,5 @@
 # About the Project
-This repository contains de-identified simulated walking data for 22 barefoot, independently ambulatory children with spina bifida and 17 children with typical development. It also contains code to generate simulations for each walking trial and code to analyze kinematic and kinetic differences between high-functioning individuals with spina bifida and individuals with typical development. Data and comprehensive simulation results are available with the rest of this repository at SimTK (TODO). The intent of this repository is to accompany our research article.
+This repository contains de-identified simulated walking data for 22 barefoot, independently ambulatory children with spina bifida and 17 children with typical development. It also contains code to generate simulations for each walking trial and code to analyze kinematic and kinetic differences between high-functioning individuals with spina bifida and individuals with typical development. Data and comprehensive simulation results are available with the rest of this repository at SimTK: [https://simtk.org/projects/sb_force](https://simtk.org/projects/sb_force). The intent of this repository is to accompany our research article.
 
 # Installation
 Currently, this repo can only be built from source. To do so,
@@ -13,7 +13,7 @@ cd independently-ambulatory-spina-bifida
 ```pip install -r requirements.txt```
 
 # Experimental Data
-Experimental data can be found on SimTK (TODO). The data types are:
+Experimental data can be found on SimTK: [https://simtk.org/projects/sb_force](https://simtk.org/projects/sb_force). The data types are:
 
 - .trc Marker Data: unfiltered marker data in the OpenSim global reference frame (x: forward, y: up, z: left). Marker data largely follow the Plug-in-Gait model with thigh wand markers replaced by a single patella marker.
 - .mot Ground Reaction Forces (GRFs): raw and lowpass filtered at 6 Hz.
