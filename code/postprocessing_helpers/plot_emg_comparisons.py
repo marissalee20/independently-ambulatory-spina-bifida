@@ -182,7 +182,7 @@ def plot_emg_comparisons(emg_demographics):
     plt.legend([purple_line, blue_line], ['static optimization', 'EMG'], loc='center right', fontsize=18,
                bbox_to_anchor=(-1.9, -1.7, 1, 1), frameon=False, ncol=2)
     plt.subplots_adjust(wspace=0.3, hspace=0.3)
-    plt.savefig('../postprocessing/figures/emg.png', bbox_inches='tight')
+    plt.savefig('../postprocessing/figures/emg.jpeg', bbox_inches='tight')
     plt.show()
     return
 
