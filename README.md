@@ -35,9 +35,9 @@ Mean and standard deviation IK errors and RRA residuals can be calculated by exe
 All post-simulation analyses were performed in Python and can be found in [code/postprocessing_analysis.ipynb](https://github.com/marissalee20/independently-ambulatory-spina-bifida/blob/main/code/postprocessing_analysis.ipynb). Helper code can be found in [code/postprocessing_helpers](https://github.com/marissalee20/independently-ambulatory-spina-bifida/tree/main/code/postprocessing_helpers).
 
 # Citation
-Please cite our paper in your publications if our repository helps your research.
+The manuscript using these data and simulations can be found here:
 
-TODO
+Lee MR, Hicks JL, Wren TAL, and Delp SL (2022). Independently ambulatory children with spina bifida experience near-typical joint moments and forces during walking. medRxiv. https://doi.org/10.1101/2022.06.02.22275843
 
 # Contact
 Please feel welcome to reach out to Marissa Lee ([marissalee@stanford.edu](marissalee@stanford.edu)) with any questions.
