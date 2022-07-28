@@ -1,6 +1,6 @@
 .ipynb_checkpoints/
 __pycache__/
-*desktop.ini
+**desktop.ini
 ReadME.pdf
 
 data/*
