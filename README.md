@@ -5,7 +5,8 @@ This repository contains de-identified simulated walking data for 22 barefoot, i
 Currently, this repo can only be built from source. To do so,
 
 ## Clone the repo:
-```git clone https://github.com/stanfordnmbl/independently-ambulatory-spina-bifida
+```
+git clone https://github.com/stanfordnmbl/independently-ambulatory-spina-bifida
 cd independently-ambulatory-spina-bifida
 ```
 
