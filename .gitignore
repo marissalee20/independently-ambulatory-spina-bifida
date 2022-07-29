@@ -2,10 +2,12 @@
 __pycache__/
 **desktop.ini
 ReadME.pdf
+out.log
+err.log
 
 data/*
 !data/demographics.xlsx
 
-simulation/*
+simulation*/*
 !simulation/Template_SetupFiles/
 !simulation/Rajagopal_passiveCal_hipAbd.osim

@@ -45,7 +45,7 @@
 function run_all(subject_datapath)
     % add code directory to path
     addpath(cd);
-    
+        
     % prompt user to choose datapath if missing
     if nargin == 0
         subject_datapath = uigetdir('..\data');

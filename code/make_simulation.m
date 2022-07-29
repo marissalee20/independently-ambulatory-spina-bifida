@@ -5,10 +5,8 @@
 %   scale model
 %   run inverse kinematics
 %   run inverse dynamics
-%   run analysis to get center of mass position pre-RRA
-%   run iterative residual reduction algorithm (RRA)
-%   run analysis to get center of mass position post-RRA
-%   run static optimization (developed by Uhlrich 2021)
+%   run analysis to get center of mass position
+%   run static optimization (developed by Uhlrich 2022)
 %
 % Args:
 %   sim_home_dir (str): directory containing setup files for simulation.
@@ -76,11 +74,11 @@ function make_simulation(sim_home_dir, walkID, walk_side, start_time, end_time)
     subjectID = sim_home_dir_split{end};
     subjectID = subjectID(1:end-11); % remove '_SetupFiles'
     
-    %% Scale
+    %% Scale model size
     scale_filename = [sim_home_dir '\Scale\' subjectID '_scaled.osim'];
     % only scale if model has not before been scaled
     if ~exist(scale_filename, 'file')
-        disp('  Scaling File...')
+        disp('  Scaling model size...')
         cd([sim_home_dir, '/Scale'])
         [~,~] = system(['opensim-cmd run-tool ' subjectID ...
             '_Setup_ScaleTool.xml']);
@@ -111,7 +109,33 @@ function make_simulation(sim_home_dir, walkID, walk_side, start_time, end_time)
         
         overwrite_simulation = true; % run future steps in simulation
     end
-
+    
+    %% Scale muscles
+    scale_adjusted_filename = [sim_home_dir '\Scale\' subjectID '_adjusted.osim'];
+    % only scale if model has not before been scaled
+    if ~exist(scale_adjusted_filename, 'file')
+        disp('  Scaling muscles...')
+        cd([sim_home_dir, '/Scale'])
+        
+        generic_model = get_generic_model(sim_home_dir, subjectID);
+        scaled_model = get_scaled_model(sim_home_dir, subjectID);
+        subject_height = get_subject_height(subjectID);
+        
+        model_scaled_Fo = scale_optimal_force(generic_model, ...
+            scaled_model, 1.70, subject_height);
+        model_scaled_Fo = set_all_max_contraction_velocity(model_scaled_Fo, 15);
+        % ^ since models that represent muscle paths as a single line tend to
+        % overestimate length changes. See Thelen 2005, Arnold 2013, Ong 2019
+        
+        model_scaled_Fo_name = [subjectID '_adjusted'];
+        model_scaled_Fo.setName(model_scaled_Fo_name);
+        fclose('all');
+        model_scaled_Fo.print([model_scaled_Fo_name '.osim']);
+        cd(scripts_dir)
+        
+        overwrite_simulation = true;
+    end
+    
     %% IK
     ik_filename = [sim_home_dir '\IK\' walkID '_out.log'];
 
@@ -159,10 +183,10 @@ function make_simulation(sim_home_dir, walkID, walk_side, start_time, end_time)
         cd(scripts_dir)
     end
     
-    %% Analysis Pre-RRA
-    analysis_filename = [sim_home_dir '\Analysis\PreRRA\' walkID '_out.log'];
+    %% Analysis
+    analysis_filename = [sim_home_dir '\Analysis\' walkID '_out.log'];
     if ~exist(analysis_filename, 'file') || overwrite_simulation == true
-        cd([sim_home_dir, '/Analysis/PreRRA']);
+        cd([sim_home_dir, '/Analysis']);
         disp('  Performing BodyKinematics Analysis...');
         [~,~] = system(['opensim-cmd run-tool ' subjectID '_' ...
             walkID '_setupAnalysis.xml']);
@@ -174,56 +198,7 @@ function make_simulation(sim_home_dir, walkID, walk_side, start_time, end_time)
             error('Error in Analysis. See error log.');
         end
         
-        cd([sim_home_dir, '/Analysis/PreRRA']);
-        copyfile('out.log', [walkID '_out.log']); % save out log for each walk
-        delete('out.log') % delete generic out log, which is now a copy
-        cd(scripts_dir)
-    end
-    
-    %% RRA
-    rra_filename = [sim_home_dir '\RRA\' walkID '_out.log'];
-    
-    if ~exist(rra_filename, 'file') || overwrite_simulation == true
-        run_iterative_rra(sim_home_dir, subjectID, walkID);
-
-        % Scale muscle forces based on final mass, set vmax
-        cd([sim_home_dir,'/RRA'])
-        model_mass_changed = Model([subjectID '_' walkID '_rra.osim']);
-        base_model_name = get_base_model(sim_home_dir, subjectID);
-        generic_model = Model(base_model_name);
-        subject_height = get_subject_height(subjectID);
-        model_post_rra = scale_optimal_force(generic_model, ...
-            model_mass_changed, 1.70, subject_height);
-        model_post_rra = set_all_max_contraction_velocity(model_post_rra, 15);
-        % ^ since models that represent muscle paths as a single line tend
-        % to overestimate length changes. See Thelen 2005, Arnold 2013, Ong
-        % 2019  
-        model_post_rra_name = [subjectID '_' walkID '_adjusted'];
-        model_post_rra.setName(model_post_rra_name)
-        fclose('all');
-        model_post_rra.print([model_post_rra_name '.osim']);
-        
-        copyfile('out.log', [walkID '_out.log']);
-        delete('out.log') % delete generic out log, which is now a copy
-        cd(scripts_dir)
-        overwrite_simulation = true;
-    end
-
-    %% Analysis Post-RRA
-    analysis_filename = [sim_home_dir '\Analysis\PostRRA\' walkID '_out.log'];
-    if ~exist(analysis_filename, 'file') || overwrite_simulation == true
-        cd([sim_home_dir, '/Analysis/PostRRA']);
-        disp('  Performing BodyKinematics Analysis...');
-        [~,~] = system(['opensim-cmd run-tool ' subjectID '_' ...
-            walkID '_setupAnalysis.xml']);
-        
-        % check error log
-        err = fileread('err.log');
-        if ~isempty(err)
-            cd(scripts_dir)
-            error('Error in Analysis. See error log.');
-        end
-        
+        cd([sim_home_dir, '/Analysis']);
         copyfile('out.log', [walkID '_out.log']); % save out log for each walk
         delete('out.log') % delete generic out log, which is now a copy
         cd(scripts_dir)
@@ -236,7 +211,7 @@ function make_simulation(sim_home_dir, walkID, walk_side, start_time, end_time)
         disp('  Performing Custom SO...');
         
         run_static_optimization(sim_home_dir, subjectID, ...
-            walkID, walk_side, start_time, end_time);
+            walkID, walk_side, start_time, end_time); % TODO bad out.log statements here
         
         % rename files to save for each walk
         copyfile('results_forces.sto', [walkID '_results_forces.sto']);
@@ -248,9 +223,6 @@ function make_simulation(sim_home_dir, walkID, walk_side, start_time, end_time)
         delete('results_forces.sto')
         delete('results_states.sto')
         delete('results_JointRxn_ReactionLoads.sto')
-        
-        % evaluate by examining residuals
-        evaluate_custom_so(subjectID,walkID);
 
         copyfile('out.log', [walkID '_out.log']); % save out log for each walk
         delete('out.log') % delete generic out log, which is now a copy
@@ -263,7 +235,7 @@ function make_simulation(sim_home_dir, walkID, walk_side, start_time, end_time)
 end
 
 %% helpers
-function base_model_filepath = get_base_model(sim_home_dir, subjectID)
+function generic_model = get_generic_model(sim_home_dir, subjectID)
     % get filepath of generic model to be scaled for a given subject.
     %
     % Args:
@@ -271,8 +243,9 @@ function base_model_filepath = get_base_model(sim_home_dir, subjectID)
     %   subjectID (str): subject identifier, e.g., 'C1'.
     %
     % Returns:
-    %   base_model_filepath (str): filepath of the generic model.
+    %   generic_model (osim Model): generic model.
     
+    import org.opensim.modeling.Model;
     fid = fopen([sim_home_dir '\Scale\' subjectID '_Setup_ScaleTool.xml'], 'r');
     f = fread(fid);
     s = char(f');
@@ -280,6 +253,22 @@ function base_model_filepath = get_base_model(sim_home_dir, subjectID)
     stop_identifier = strfind(s, '</model_file>');
     in_between_text = s(start_identifier+12 : stop_identifier-1);
     base_model_filepath = in_between_text;
+    generic_model = Model(base_model_filepath);
+end
+
+function scaled_model = get_scaled_model(sim_home_dir, subjectID)
+    % get filepath of scaled model for a given subject.
+    %
+    % Args:
+    %   sim_home_dir (str): directory containing setup files for simulation.
+    %   subjectID (str): subject identifier, e.g., 'C1'.
+    %
+    % Returns:
+    %   scaled_model (osim Model): scaled model.
+    
+    import org.opensim.modeling.Model;
+    scaled_model_filepath = [sim_home_dir '\Scale\' subjectID '_scaled.osim'];
+    scaled_model = Model(scaled_model_filepath);
 end
 
 function subject_height = get_subject_height(subjectID)

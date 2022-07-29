@@ -60,12 +60,11 @@ function run_static_optimization(sim_home_dir, subjectID, walkID, ...
     % paths
     grf_filepath = [sim_home_dir '\..\..\data\' subjectID '\' ...
         subjectID '_' walkID '_grf_filtered.mot'];
-    coordinate_filepath = [sim_home_dir '\RRA\results_rra_' walkID ...
-        '\rra_' walkID '_Kinematics_q.sto'];
-    actuation_force_filepath = [sim_home_dir '\RRA\results_rra_' ...
-        walkID '\rra_' walkID '_Actuation_force.sto'];
+    coordinate_filepath = [sim_home_dir '\IK\' subjectID '_' walkID '_ik.mot'];
+    actuation_force_filepath = [sim_home_dir '\ID\results_' walkID ...
+        '\inverse_dynamics_' walkID '.sto'];
     output_filepath = [sim_home_dir '\SO_Custom\'];
-    model_name = [sim_home_dir '\RRA\' subjectID '_' walkID '_adjusted.osim'];
+    model_name = [sim_home_dir '\Scale\' subjectID '_adjusted.osim'];
 
     % degrees of freedom to ignore during moment matching constraint. This
     % is specific to the model.
@@ -294,6 +293,10 @@ function run_static_optimization(sim_home_dir, subjectID, walkID, ...
             actuation_label = 'pelvis_rotation_moment';
         elseif strcmp(actuation_label,'MZ')
             actuation_label = 'pelvis_tilt_moment';
+        elseif strcmp(actuation_label, 'knee_angle_r_beta_force')
+            actuation_label = '';
+        elseif strcmp(actuation_label, 'knee_angle_l_beta_force')
+            actuation_label = '';
         end
         actuation_labels{i} = actuation_label;
     end
@@ -309,6 +312,15 @@ function run_static_optimization(sim_home_dir, subjectID, walkID, ...
         moments_id(:,i) = str2num(data_col);
         coord_names_id{i} = free_coord_names{i};
     end
+    
+    %% interpolate so kinematics & kinetics align
+    start_time = max([time_coords(1) time_actuation(1)]);
+    end_time = min([time_coords(end) time_actuation(end)]);
+    time_vec = linspace(start_time, end_time, 101);
+
+    q = interp1(time_coords, q, time_vec);
+    qd = interp1(time_coords, qd, time_vec);
+    moments_id = interp1(time_actuation, moments_id, time_vec);
         
     %% set up analyses
     % ForceReporter
@@ -341,8 +353,8 @@ function run_static_optimization(sim_home_dir, subjectID, walkID, ...
     
     %% optimization
     % Find start and end rows
-    [~,start_row] = min(abs(time_coords-start_time));
-    [~,end_row] = min(abs(end_time-time_coords));
+    [~,start_row] = min(abs(time_vec-start_time));
+    [~,end_row] = min(abs(end_time-time_vec));
     n_time_steps = end_row - start_row + 1 ; % # of iterations through time loop
     
     % parameters that don't change with each timestep
@@ -400,7 +412,7 @@ function run_static_optimization(sim_home_dir, subjectID, walkID, ...
     for j = 1:n_sample_steps
         t_ind = timesteps(j); % Matlab indexing
         row_ind = start_row - 1 + t_ind; % Matlab indexing
-        t = time_coords(row_ind);
+        t = time_vec(row_ind);
         fprintf('\tOptimizing t=%.3fs\n',t)
 
         state.setTime(t) ; % clears all position & velocity info in state

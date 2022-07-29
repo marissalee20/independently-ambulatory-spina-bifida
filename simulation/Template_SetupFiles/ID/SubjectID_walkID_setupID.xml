@@ -6,7 +6,7 @@
 		<!--Directory for input files-->
 		<input_directory />
 		<!--Name of the .osim file used to construct a model.-->
-		<model_file>../Scale/SubjectID_scaled.osim</model_file>
+		<model_file>../Scale/SubjectID_adjusted.osim</model_file>
 		<!--Time range over which the inverse dynamics problem is solved.-->
 		<time_range> 4.0 5.0 </time_range>
 		<!--List of forces by individual or grouping name (e.g. All, actuators, muscles, ...) to be excluded when computing model dynamics. 'All' also excludes external loads added via 'external_loads_file'.-->
