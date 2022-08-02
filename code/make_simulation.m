@@ -113,7 +113,7 @@ function make_simulation(sim_home_dir, walkID, walk_side, start_time, end_time)
     %% Scale muscles
     scale_adjusted_filename = [sim_home_dir '\Scale\' subjectID '_adjusted.osim'];
     % only scale if model has not before been scaled
-    if ~exist(scale_adjusted_filename, 'file')
+    if ~exist(scale_adjusted_filename, 'file') || overwrite_simulation == true
         disp('  Scaling muscles...')
         cd([sim_home_dir, '/Scale'])
         

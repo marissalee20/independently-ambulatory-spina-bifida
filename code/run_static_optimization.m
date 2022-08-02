@@ -235,7 +235,7 @@ function run_static_optimization(sim_home_dir, subjectID, walkID, ...
     time_coords = ArrayDouble();
     coordinate_sto.getTimeColumn(time_coords);
     time_coords = str2num(time_coords);
-    sampFreq = 1 / (time_coords(2) - time_coords(1)); % coordinate sample rate
+    sample_freq = 1 / (time_coords(2) - time_coords(1)); % coordinate sample rate
 
     coord_names_q = cell(1, n_coords);
     q = zeros(length(time_coords), n_coords);
@@ -261,11 +261,16 @@ function run_static_optimization(sim_home_dir, subjectID, walkID, ...
         end
     end
 
+    % filter IK results with 4th order, zero-lag, butterworth lowpass (6Hz)
+    cutoff_freq = 6; % Hz
+    [b,a] = butter(2, cutoff_freq/(sample_freq/2)); % (filtfilt doubles order)
+    q = filtfilt(b,a,q) ;
+
     qd = zeros(size(q));
     qdd = qd;
     for i = 1:n_coords
-        qd(:,i) = gradient(q(:,i), 1/sampFreq);
-        qdd(:,i) = gradient(qd(:,i), 1/sampFreq);
+        qd(:,i) = gradient(q(:,i), 1/sample_freq);
+        qdd(:,i) = gradient(qd(:,i), 1/sample_freq);
     end
     
     %% get actuation forces (inverse dynamics moments and residuals)
