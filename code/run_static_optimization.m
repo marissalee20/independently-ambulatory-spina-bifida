@@ -87,10 +87,13 @@ function run_static_optimization(sim_home_dir, subjectID, walkID, ...
     gr_point_identifiers = {'1_ground_force_p', '2_ground_force_p', ...
         '3_ground_force_p'};
 
-    % joint reaction Fields
-    jrxn_joints = {'walker_knee_r', 'ankle_r', 'walker_knee_l', 'ankle_l'}; % these joints
-    jrxn_bodies = {'child', 'parent', 'child', 'parent'}; % on these bodies
-    jrxn_expression_frames = {'child', 'parent', 'child', 'parent'}; % in these frames
+    % joint power fields % TODO keep this?
+    joint_power_names = {'ankle_angle_l', 'ankle_angle_r'};
+    
+    % joint reaction fields % TODO keep hips?
+    jrxn_joints = {'walker_knee_r', 'ankle_r', 'walker_knee_l', 'ankle_l', 'walker_knee_l', 'walker_knee_r', 'hip_l', 'hip_r'}; % these joints
+    jrxn_bodies = {'child', 'parent', 'child', 'parent', 'parent', 'parent', 'child', 'child'}; % on these bodies
+    jrxn_expression_frames = {'child', 'parent', 'child', 'parent', 'parent', 'parent', 'child', 'child'}; % in these frames
 
     % create output directory and log output
     mkdir(output_filepath);
@@ -326,7 +329,25 @@ function run_static_optimization(sim_home_dir, subjectID, walkID, ...
     q = interp1(time_coords, q, time_vec);
     qd = interp1(time_coords, qd, time_vec);
     moments_id = interp1(time_actuation, moments_id, time_vec);
-        
+    
+    %% TODO keep joint power calculation?
+    n_joint_powers = length(joint_power_names);
+    joint_moments = zeros(101, n_joint_powers);
+    joint_velocities = zeros(101, n_joint_powers);
+    power_names = cell(1, n_joint_powers);
+    for i = 1:n_joint_powers
+        velocity_idx = find(strcmp(coord_names_q, joint_power_names{i}));
+        joint_velocities(:,i) = qd(:,velocity_idx);
+        moment_idx = find(strcmp(coord_names_id, joint_power_names{i}));
+        joint_moments(:,i) = moments_id(:,moment_idx);
+        power_names{i} = [joint_power_names{i} '_power'];
+    end
+    joint_powers = joint_moments.*joint_velocities;
+    
+    joint_powers = array2table(joint_powers);
+    joint_powers.Properties.VariableNames = power_names;
+    writetable(joint_powers, [output_filepath walkID '_results_power.csv']);
+
     %% set up analyses
     % ForceReporter
     force_report = ForceReporter(model);
@@ -499,17 +520,17 @@ function run_static_optimization(sim_home_dir, subjectID, walkID, ...
 
         % run analyses
         if t_ind == 1
-            force_report.begin(state) ;
-            state_report.begin(state) ;
-            jointRxn.begin(state) ;
+            force_report.begin(state);
+            state_report.begin(state);
+            jointRxn.begin(state);
         else
-            force_report.step(state, t_ind-1) ;
-            state_report.step(state, t_ind-1) ;
-            jointRxn.step(state, t_ind-1) ;
+            force_report.step(state, t_ind-1);
+            state_report.step(state, t_ind-1);
+            jointRxn.step(state, t_ind-1);
         end
 
         % store activations
-        coeffs_last_step = coeffs_final ; % used to compute tendon force
+        coeffs_last_step = coeffs_final; % used to compute tendon force
         if num2str(exit_flag) <= 0
             error('Optimization failed')
         end
