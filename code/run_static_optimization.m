@@ -60,11 +60,12 @@ function run_static_optimization(sim_home_dir, subjectID, walkID, ...
     % paths
     grf_filepath = [sim_home_dir '\..\..\data\' subjectID '\' ...
         subjectID '_' walkID '_grf_filtered.mot'];
-    coordinate_filepath = [sim_home_dir '\IK\' subjectID '_' walkID '_ik.mot'];
-    actuation_force_filepath = [sim_home_dir '\ID\results_' walkID ...
-        '\inverse_dynamics_' walkID '.sto'];
+    coordinate_filepath = [sim_home_dir '\RRA\results_rra_' walkID ...
+        '\rra_' walkID '_Kinematics_q.sto'];
+    actuation_force_filepath = [sim_home_dir '\RRA\results_rra_' ...
+        walkID '\rra_' walkID '_Actuation_force.sto'];
     output_filepath = [sim_home_dir '\SO_Custom\'];
-    model_name = [sim_home_dir '\Scale\' subjectID '_adjusted.osim'];
+    model_name = [sim_home_dir '\RRA\' subjectID '_' walkID '_adjusted.osim'];
 
     % degrees of freedom to ignore during moment matching constraint. This
     % is specific to the model.
@@ -86,14 +87,14 @@ function run_static_optimization(sim_home_dir, subjectID, walkID, ...
 	gr_point_expression_frames = {'ground', 'ground', 'ground'};
     gr_point_identifiers = {'1_ground_force_p', '2_ground_force_p', ...
         '3_ground_force_p'};
-
-    % joint power fields % TODO keep this?
-    joint_power_names = {'ankle_angle_l', 'ankle_angle_r'};
     
-    % joint reaction fields % TODO keep hips?
-    jrxn_joints = {'walker_knee_r', 'ankle_r', 'walker_knee_l', 'ankle_l', 'walker_knee_l', 'walker_knee_r', 'hip_l', 'hip_r'}; % these joints
-    jrxn_bodies = {'child', 'parent', 'child', 'parent', 'parent', 'parent', 'child', 'child'}; % on these bodies
-    jrxn_expression_frames = {'child', 'parent', 'child', 'parent', 'parent', 'parent', 'child', 'child'}; % in these frames
+    % ankle joint power fields
+    joint_power_names = {'ankle_angle_l', 'ankle_angle_r'};
+
+    % joint reaction fields
+    jrxn_joints = {'walker_knee_r', 'ankle_r', 'walker_knee_l', 'ankle_l'}; % these joints
+    jrxn_bodies = {'child', 'parent', 'child', 'parent'}; % on these bodies
+    jrxn_expression_frames = {'child', 'parent', 'child', 'parent'}; % in these frames
 
     % create output directory and log output
     mkdir(output_filepath);
@@ -238,7 +239,6 @@ function run_static_optimization(sim_home_dir, subjectID, walkID, ...
     time_coords = ArrayDouble();
     coordinate_sto.getTimeColumn(time_coords);
     time_coords = str2num(time_coords);
-    sample_freq = 1 / (time_coords(2) - time_coords(1)); % coordinate sample rate
 
     coord_names_q = cell(1, n_coords);
     q = zeros(length(time_coords), n_coords);
@@ -263,17 +263,18 @@ function run_static_optimization(sim_home_dir, subjectID, walkID, ...
             counter_free_coords = counter_free_coords + 1;
         end
     end
-
-    % filter IK results with 4th order, zero-lag, butterworth lowpass (6Hz)
-    cutoff_freq = 6; % Hz
-    [b,a] = butter(2, cutoff_freq/(sample_freq/2)); % (filtfilt doubles order)
-    q = filtfilt(b,a,q) ;
+    
+    % make sure there's equal spacing
+    [~, keep_ind] = unique(time_coords); % first occurrence of each time value 
+    time_coords = time_coords(keep_ind);
+    q = q(keep_ind,:);
+    samp_freq = 1 / (time_coords(2) - time_coords(1)); % coordinate sample rate
 
     qd = zeros(size(q));
     qdd = qd;
     for i = 1:n_coords
-        qd(:,i) = gradient(q(:,i), 1/sample_freq);
-        qdd(:,i) = gradient(qd(:,i), 1/sample_freq);
+        qd(:,i) = gradient(q(:,i), 1/samp_freq);
+        qdd(:,i) = gradient(qd(:,i), 1/samp_freq);
     end
     
     %% get actuation forces (inverse dynamics moments and residuals)
@@ -301,10 +302,6 @@ function run_static_optimization(sim_home_dir, subjectID, walkID, ...
             actuation_label = 'pelvis_rotation_moment';
         elseif strcmp(actuation_label,'MZ')
             actuation_label = 'pelvis_tilt_moment';
-        elseif strcmp(actuation_label, 'knee_angle_r_beta_force')
-            actuation_label = '';
-        elseif strcmp(actuation_label, 'knee_angle_l_beta_force')
-            actuation_label = '';
         end
         actuation_labels{i} = actuation_label;
     end
@@ -321,25 +318,30 @@ function run_static_optimization(sim_home_dir, subjectID, walkID, ...
         coord_names_id{i} = free_coord_names{i};
     end
     
-    %% interpolate so kinematics & kinetics align
+    % make sure there's equal spacing
+    [~, keep_ind] = unique(time_actuation); % first occurrence of each time value 
+    time_actuation = time_actuation(keep_ind);
+    moments_id = moments_id(keep_ind,:);
+    
+    %% calculate ankle joint powers
+    % get into length 101 arrays
     start_time = max([time_coords(1) time_actuation(1)]);
     end_time = min([time_coords(end) time_actuation(end)]);
     time_vec = linspace(start_time, end_time, 101);
-
-    q = interp1(time_coords, q, time_vec);
-    qd = interp1(time_coords, qd, time_vec);
-    moments_id = interp1(time_actuation, moments_id, time_vec);
     
-    %% TODO keep joint power calculation?
+    
+    qd101 = interp1(time_coords, qd, time_vec);
+    moments_id101 = interp1(time_actuation, moments_id, time_vec);
+    
     n_joint_powers = length(joint_power_names);
     joint_moments = zeros(101, n_joint_powers);
     joint_velocities = zeros(101, n_joint_powers);
     power_names = cell(1, n_joint_powers);
     for i = 1:n_joint_powers
         velocity_idx = find(strcmp(coord_names_q, joint_power_names{i}));
-        joint_velocities(:,i) = qd(:,velocity_idx);
+        joint_velocities(:,i) = qd101(:,velocity_idx);
         moment_idx = find(strcmp(coord_names_id, joint_power_names{i}));
-        joint_moments(:,i) = moments_id(:,moment_idx);
+        joint_moments(:,i) = moments_id101(:,moment_idx);
         power_names{i} = [joint_power_names{i} '_power'];
     end
     joint_powers = joint_moments.*joint_velocities;
@@ -347,7 +349,7 @@ function run_static_optimization(sim_home_dir, subjectID, walkID, ...
     joint_powers = array2table(joint_powers);
     joint_powers.Properties.VariableNames = power_names;
     writetable(joint_powers, [output_filepath walkID '_results_power.csv']);
-
+        
     %% set up analyses
     % ForceReporter
     force_report = ForceReporter(model);
@@ -379,8 +381,8 @@ function run_static_optimization(sim_home_dir, subjectID, walkID, ...
     
     %% optimization
     % Find start and end rows
-    [~,start_row] = min(abs(time_vec-start_time));
-    [~,end_row] = min(abs(end_time-time_vec));
+    [~,start_row] = min(abs(time_coords-start_time));
+    [~,end_row] = min(abs(end_time-time_coords));
     n_time_steps = end_row - start_row + 1 ; % # of iterations through time loop
     
     % parameters that don't change with each timestep
@@ -438,7 +440,7 @@ function run_static_optimization(sim_home_dir, subjectID, walkID, ...
     for j = 1:n_sample_steps
         t_ind = timesteps(j); % Matlab indexing
         row_ind = start_row - 1 + t_ind; % Matlab indexing
-        t = time_vec(row_ind);
+        t = time_coords(row_ind);
         fprintf('\tOptimizing t=%.3fs\n',t)
 
         state.setTime(t) ; % clears all position & velocity info in state
@@ -646,4 +648,4 @@ function c = cost_function(coeffs)
     %   c (double): cost value to minimize.
     
     c = sum(coeffs.^2);
-end    
+end

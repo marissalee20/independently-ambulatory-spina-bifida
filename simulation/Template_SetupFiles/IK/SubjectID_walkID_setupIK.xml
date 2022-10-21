@@ -6,7 +6,7 @@
 		<!--Directory for input files-->
 		<input_directory />
 		<!--Name of the model file (.osim) to use for inverse kinematics.-->
-		<model_file>../Scale/SubjectID_adjusted.osim</model_file>
+		<model_file>../Scale/SubjectID_scaled.osim</model_file>
 		<!--A positive scalar that weights the relative importance of satisfying constraints. A weighting of 'Infinity' (the default) results in the constraints being strictly enforced. Otherwise, the weighted-squared constraint errors are appended to the cost function.-->
 		<constraint_weight>Inf</constraint_weight>
 		<!--The accuracy of the solution in absolute terms. Default is 1e-5. It determines the number of significant digits to which the solution can be trusted.-->

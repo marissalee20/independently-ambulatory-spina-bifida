@@ -110,32 +110,6 @@ function make_simulation(sim_home_dir, walkID, walk_side, start_time, end_time)
         overwrite_simulation = true; % run future steps in simulation
     end
     
-    %% Scale muscles
-    scale_adjusted_filename = [sim_home_dir '\Scale\' subjectID '_adjusted.osim'];
-    % only scale if model has not before been scaled
-    if ~exist(scale_adjusted_filename, 'file') || overwrite_simulation == true
-        disp('  Scaling muscles...')
-        cd([sim_home_dir, '/Scale'])
-        
-        generic_model = get_generic_model(sim_home_dir, subjectID);
-        scaled_model = get_scaled_model(sim_home_dir, subjectID);
-        subject_height = get_subject_height(subjectID);
-        
-        model_scaled_Fo = scale_optimal_force(generic_model, ...
-            scaled_model, 1.70, subject_height);
-        model_scaled_Fo = set_all_max_contraction_velocity(model_scaled_Fo, 15);
-        % ^ since models that represent muscle paths as a single line tend to
-        % overestimate length changes. See Thelen 2005, Arnold 2013, Ong 2019
-        
-        model_scaled_Fo_name = [subjectID '_adjusted'];
-        model_scaled_Fo.setName(model_scaled_Fo_name);
-        fclose('all');
-        model_scaled_Fo.print([model_scaled_Fo_name '.osim']);
-        cd(scripts_dir)
-        
-        overwrite_simulation = true;
-    end
-    
     %% IK
     ik_filename = [sim_home_dir '\IK\' walkID '_out.log'];
 
@@ -182,11 +156,11 @@ function make_simulation(sim_home_dir, walkID, walk_side, start_time, end_time)
         delete('out.log') % delete generic out log, which is now a copy
         cd(scripts_dir)
     end
-    
-    %% Analysis
-    analysis_filename = [sim_home_dir '\Analysis\' walkID '_out.log'];
+
+    %% Analysis Pre-RRA
+    analysis_filename = [sim_home_dir '\Analysis\PreRRA\' walkID '_out.log'];
     if ~exist(analysis_filename, 'file') || overwrite_simulation == true
-        cd([sim_home_dir, '/Analysis']);
+        cd([sim_home_dir, '/Analysis/PreRRA']);
         disp('  Performing BodyKinematics Analysis...');
         [~,~] = system(['opensim-cmd run-tool ' subjectID '_' ...
             walkID '_setupAnalysis.xml']);
@@ -198,7 +172,55 @@ function make_simulation(sim_home_dir, walkID, walk_side, start_time, end_time)
             error('Error in Analysis. See error log.');
         end
         
-        cd([sim_home_dir, '/Analysis']);
+        cd([sim_home_dir, '/Analysis/PreRRA']);
+        copyfile('out.log', [walkID '_out.log']); % save out log for each walk
+        delete('out.log') % delete generic out log, which is now a copy
+        cd(scripts_dir)
+    end
+    
+    %% RRA
+    rra_filename = [sim_home_dir '\RRA\' walkID '_out.log'];
+    
+    if ~exist(rra_filename, 'file') || overwrite_simulation == true
+        run_iterative_rra(sim_home_dir, subjectID, walkID);
+
+        % Scale muscle forces based on final mass, set vmax
+        cd([sim_home_dir,'/RRA'])
+        model_mass_changed = Model([subjectID '_' walkID '_rra.osim']);
+        generic_model = get_generic_model(sim_home_dir, subjectID);
+        subject_height = get_subject_height(subjectID);
+        model_post_rra = scale_optimal_force(generic_model, ...
+            model_mass_changed, 1.70, subject_height);
+        model_post_rra = set_all_max_contraction_velocity(model_post_rra, 15);
+        % ^ since models that represent muscle paths as a single line tend
+        % to overestimate length changes. See Thelen 2005, Arnold 2013, Ong
+        % 2019  
+        model_post_rra_name = [subjectID '_' walkID '_adjusted'];
+        model_post_rra.setName(model_post_rra_name)
+        fclose('all');
+        model_post_rra.print([model_post_rra_name '.osim']);
+        
+        copyfile('out.log', [walkID '_out.log']);
+        delete('out.log') % delete generic out log, which is now a copy
+        cd(scripts_dir)
+        overwrite_simulation = true;
+    end
+
+    %% Analysis Post-RRA
+    analysis_filename = [sim_home_dir '\Analysis\PostRRA\' walkID '_out.log'];
+    if ~exist(analysis_filename, 'file') || overwrite_simulation == true
+        cd([sim_home_dir, '/Analysis/PostRRA']);
+        disp('  Performing BodyKinematics Analysis...');
+        [~,~] = system(['opensim-cmd run-tool ' subjectID '_' ...
+            walkID '_setupAnalysis.xml']);
+        
+        % check error log
+        err = fileread('err.log');
+        if ~isempty(err)
+            cd(scripts_dir)
+            error('Error in Analysis. See error log.');
+        end
+        
         copyfile('out.log', [walkID '_out.log']); % save out log for each walk
         delete('out.log') % delete generic out log, which is now a copy
         cd(scripts_dir)
@@ -211,7 +233,7 @@ function make_simulation(sim_home_dir, walkID, walk_side, start_time, end_time)
         disp('  Performing Custom SO...');
         
         run_static_optimization(sim_home_dir, subjectID, ...
-            walkID, walk_side, start_time, end_time); % TODO bad out.log statements here
+            walkID, walk_side, start_time, end_time);
         
         % rename files to save for each walk
         copyfile('results_forces.sto', [walkID '_results_forces.sto']);
@@ -223,7 +245,10 @@ function make_simulation(sim_home_dir, walkID, walk_side, start_time, end_time)
         delete('results_forces.sto')
         delete('results_states.sto')
         delete('results_JointRxn_ReactionLoads.sto')
-
+        
+        % evaluate by examining residuals
+        evaluate_custom_so(subjectID,walkID);
+        
         copyfile('out.log', [walkID '_out.log']); % save out log for each walk
         delete('out.log') % delete generic out log, which is now a copy
         cd(scripts_dir)
