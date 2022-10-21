@@ -38,7 +38,7 @@ All post-simulation analyses were performed in Python and can be found in [code/
 # Citation
 The manuscript using these data and simulations can be found here:
 
-Lee MR, Hicks JL, Wren TAL, and Delp SL (2022). Independently ambulatory children with spina bifida experience near-typical knee and ankle joint moments and forces during walking. _Gait and Posture_, in press. https://doi.org/10.1101/2022.06.02.22275843
+Lee MR, Hicks JL, Wren TAL, and Delp SL (2022). Independently ambulatory children with spina bifida experience near-typical knee and ankle joint moments and forces during walking. _Gait and Posture_, in press. [https://doi.org/10.1101/2022.06.02.22275843](https://doi.org/10.1016/j.gaitpost.2022.10.010)
 
 # Contact
 Please feel welcome to reach out to Marissa Lee ([marissalee@stanford.edu](marissalee@stanford.edu)) with any questions.
