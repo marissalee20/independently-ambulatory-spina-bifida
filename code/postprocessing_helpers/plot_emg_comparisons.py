@@ -75,7 +75,7 @@ def plot_emg_comparisons(emg_demographics):
                     }
     
     ylims = {'gasmed': 0.6,
-             'tibant': 0.8,
+             'tibant': 0.9,
              'semiten': 0.08,
              'recfem': 0.6,
              'vaslat': 0.6
@@ -101,6 +101,10 @@ def plot_emg_comparisons(emg_demographics):
             ax = plt.gca()
             if i == 0:
                 plt.title(emg_dict[muscle], fontsize=18)
+                
+            # plot swing
+            plt.fill_between(np.arange(62,101), 0, ylims[muscle], color='gray',
+                             alpha=0.15, linewidth=0)
 
             # average results over walks
             f_notes = '../data/' + subjectID + '/' + subjectID + ' notes.xlsx'
@@ -145,7 +149,7 @@ def plot_emg_comparisons(emg_demographics):
                 if 'gas'in muscle or 'rec' in muscle or 'vas' in muscle:
                     yticks = [0, 0.2, 0.4, 0.6]
                 elif 'tib' in muscle:
-                    yticks = [0, 0.2, 0.4, 0.6, 0.8]
+                    yticks = [0, 0.3, 0.6, 0.9]
                 elif 'semi' in muscle:
                     yticks = [0, 0.02, 0.04, 0.06, 0.08]
                 plt.yticks(yticks, yticks)
@@ -153,6 +157,7 @@ def plot_emg_comparisons(emg_demographics):
             else: # remove plot if no EMG
                 ax.spines['left'].set_visible(False)
                 ax.spines['bottom'].set_visible(False)
+                ax.cla()
                 plt.tick_params(bottom=False, left=False)
                 plt.xticks([])
                 plt.yticks([])

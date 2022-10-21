@@ -67,9 +67,13 @@ def get_average_walking_speed(subject):
     walking_speeds = np.zeros(n_walkIDs)
     for i in range(n_walkIDs):
         walkID = walkIDs[i]
+#         position_file = ('../simulation/' + subject
+#                          + '_SetupFiles/Analysis/results_analysis_' + walkID
+#                          + '/analysis_' + walkID + '_BodyKinematics_pos_global.sto') # TODO if no RRA
         position_file = ('../simulation/' + subject
                          + '_SetupFiles/Analysis/PostRRA/results_analysis_' + walkID
-                         + '/analysis_' + walkID + '_BodyKinematics_pos_global.sto')
+                         + '/analysis_' + walkID + '_BodyKinematics_pos_global.sto') # with RRA
+
         walking_speeds[i] = calculate_walking_speed(position_file)
     
     average_walking_speed = np.mean(walking_speeds)

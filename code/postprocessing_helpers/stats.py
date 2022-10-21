@@ -31,30 +31,34 @@ import numpy as np
 import spm1d
 from scipy.stats import ttest_ind
 
-def print_ttest(td_df, sb_df, label, p_digits=3):
-    """print p-value of a Welch's t-test and TD and SB means and standard deviations.
+def print_ttest(df1, df2, group1_descriptor, group2_descriptor, label, p_digits=3):
+    """print p-value of a Welch's t-test and group means and standard deviations.
     
     Args:
-        td_df (pd DataFrame): dataframe containing data, including those associated
-                              with the given label, from subjects with typical
-                              development.
-        sb_df (pd DataFrame): dataframe containing data, including those associated
-                              with the given label, from subjects with spina bifida.
+        df1 (pd DataFrame): dataframe containing data, including those associated
+                            with the given label, from subjects in group 1.
+        df2 (pd DataFrame): dataframe containing data, including those associated
+                            with the given label, from subjects in group 2.
+        group1_descriptor (str): name of group 1, to be printed.
+        group2_descriptor (str): name of group 2, to be printed.
         label (str): label of value to compare.
         p_digits (int): number of decimal places of p-value to print.
     
     Returns:
         none.
     """
-    td_data = td_df[label]
-    sb_data = sb_df[label]
-    stat, p = ttest_ind(td_data, sb_data, equal_var=False)
+    group1_data = df1[label]
+    group2_data = df2[label]
+    stat, p = ttest_ind(group1_data, group2_data, equal_var=False)
     print(('%s: %.' + str(p_digits) + 'f') %(label, p))
-    print('\tTD: %.1f (%.1f)' %(np.mean(td_data), np.std(td_data)))
-    print('\tSB: %.1f (%.1f)' %(np.mean(sb_data), np.std(sb_data)))
+    print('\t%s: %.1f (%.1f)' %(group1_descriptor,
+                                np.mean(group1_data), np.std(group1_data)))
+    print('\t%s: %.1f (%.1f)' %(group2_descriptor,
+                                np.mean(group2_data), np.std(group2_data)))
+    return
     
 
-def run_spm(data1, data2, label, plot=True, plot_stats=False, color1='k', color2='r'):
+def run_spm(data1, data2, label, plot=True, plot_stats=False, color1='k', color2='r', alpha=1):
     """Conduct SPM two-sample t-test and plot results.
     
     Args:
@@ -65,14 +69,16 @@ def run_spm(data1, data2, label, plot=True, plot_stats=False, color1='k', color2
         plot_stats (bool): True to plot SPM results.
         color1 (color): color assigned to data1.
         color2 (color): color assigned to data2.
+        alpha (float): transparency of plot. float 0 to 1, where 0 is completely transparent
+                       and 1 is completely opaque.
     
     Returns:
         ti (spm inference).
     
     """
-    alpha = 0.05
-    t     = spm1d.stats.ttest2(data1, data2, equal_var=False)
-    ti    = t.inference(alpha, two_tailed=True, interp=True)
+    stats_alpha = 0.05
+    t = spm1d.stats.ttest2(data1, data2, equal_var=False)
+    ti = t.inference(stats_alpha, two_tailed=True, interp=True)
     
     if plot==True:
         # plot mean and SD:
@@ -86,12 +92,12 @@ def run_spm(data1, data2, label, plot=True, plot_stats=False, color1='k', color2
         x_data2 = np.linspace(0, 100, data2.shape[1])
 
         plt.fill_between(x_data1, mean_data1-sd_data1, mean_data1+sd_data1,
-                         color=color1, alpha=0.5)
+                         color=color1, alpha=0.5*alpha)
         plt.fill_between(x_data2, mean_data2-sd_data2, mean_data2+sd_data2,
-                         color=color2, alpha=0.5)
+                         color=color2, alpha=0.5*alpha)
 
-        plt.plot(x_data1, mean_data1, color1, linewidth=2)
-        plt.plot(x_data2, mean_data2, color2, linewidth=2)
+        plt.plot(x_data1, mean_data1, color1, linewidth=2, alpha=alpha)
+        plt.plot(x_data2, mean_data2, color2, linewidth=2, alpha=alpha)
     
     if plot_stats==True:
         plt.show()
@@ -141,7 +147,7 @@ def get_bar_midpoints(bar):
     ends = [i for i in range(len(bar)-1) if bar[i+1]<bar[i]]
     if bar[-1]==1:
         ends.append(len(bar)-1)
-    
+        
     midpoints = np.mean([np.array(starts), np.array(ends)], axis=0)
     return midpoints
 
@@ -181,7 +187,7 @@ def plot_sig(ti, color='r'):
 
     for i in range(len(midpoints)):
         p_val = p_vals[i]
-        print(p_val)
+        print('%.4f, %i%% of gait cycle' %(p_val, np.sum(bar[0])/len(bar[0])*100))
         if p_val < 0.001:
             plt.scatter([midpoints[i], midpoints[i], midpoints[i]], [-0.3, 0, 0.3], marker=(6,2,0), color=color)
         elif p_val < 0.01:

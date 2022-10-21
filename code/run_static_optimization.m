@@ -329,7 +329,6 @@ function run_static_optimization(sim_home_dir, subjectID, walkID, ...
     end_time = min([time_coords(end) time_actuation(end)]);
     time_vec = linspace(start_time, end_time, 101);
     
-    
     qd101 = interp1(time_coords, qd, time_vec);
     moments_id101 = interp1(time_actuation, moments_id, time_vec);
     

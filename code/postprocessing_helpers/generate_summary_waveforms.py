@@ -32,10 +32,11 @@ import pandas as pd
 
 from read_data import get_header_length, get_walkIDs
 
-def generate_summary_waveforms(simulation_directory):
+def generate_summary_waveforms(simulation_directory, print_subjects=True):
     """extract and standardize waveforms (ground reaction forces, kinematics,
-    kinetics, and joint reaction forces) for all subjects with simulation results.
-    All standardized waveforms are resampled to 100 timepoints.
+    kinetics, joint reaction forces, muscle forces, and joint powers) for all
+    subjects with simulation results. All standardized waveforms are resampled to
+    100 timepoints.
     
     Args:
         simulation_directory (str): path to directory containing simulation results.
@@ -51,28 +52,37 @@ def generate_summary_waveforms(simulation_directory):
     all_kinematics = pd.DataFrame()
     all_kinetics = pd.DataFrame()
     all_jrfs = pd.DataFrame()
+    all_muscle_forces = pd.DataFrame()
+    all_powers = pd.DataFrame()
     for subject_directory in subject_directories:
         subject = subject_directory.split('_')[0]
-        
+        if print_subjects:
+            print(subject)
+            
         # get subject-specific waveform data
         subject_grfs = get_waveform_data(subject, 'grf')
         subject_kinematics = get_waveform_data(subject, 'kinematic')
         subject_kinetics = get_waveform_data(subject, 'kinetic')
         subject_jrfs = get_waveform_data(subject, 'jrf') # joint rxn
-
+        subject_muscle_forces = get_waveform_data(subject, 'muscle force')
+        subject_powers = get_waveform_data(subject, 'power')
 
         # append subject-specific waveform data
         all_grfs = all_grfs.append(subject_grfs)
         all_kinematics = all_kinematics.append(subject_kinematics)
         all_kinetics = all_kinetics.append(subject_kinetics)
         all_jrfs = all_jrfs.append(subject_jrfs)
+        all_muscle_forces = all_muscle_forces.append(subject_muscle_forces)
+        all_powers = all_powers.append(subject_powers)
         
     # combine into one dataframe
-    keys = ['walk', 'side', 'subject', 'bodymass']
+    keys = ['walk', 'side', 'subject', 'bodymass', 'height']
     all_kinetics = rename_kinetics(all_kinetics, omit_columns=keys)
     summary_waveforms = pd.merge(all_kinematics, all_kinetics, on=keys)
     summary_waveforms = pd.merge(summary_waveforms, all_jrfs, on=keys)
     summary_waveforms = pd.merge(summary_waveforms, all_grfs, on=keys)
+    summary_waveforms = pd.merge(summary_waveforms, all_muscle_forces, on=keys)
+    summary_waveforms = pd.merge(summary_waveforms, all_powers, on=keys)
     
     return summary_waveforms
 
@@ -103,7 +113,7 @@ def get_waveform_data(subject, waveform_type):
     Args:
         subject (str): subject name.
         waveform_type (str): waveform type to extract. 'grf', 'kinematic', 'kinetic',
-                             or 'jrf'.
+                             'jrf', 'muscle force', TODO.
     
     Returns:
         waveform_data (pd DataFrame): a dataframe containing waveform data per trial.
@@ -111,6 +121,7 @@ def get_waveform_data(subject, waveform_type):
     notes_filename = '../data/' + subject + '/' + subject + ' notes.xlsx'
     walkIDs = get_walkIDs(notes_filename)
     bodymass = get_bodymass(subject)
+    height = get_height(subject)
     
     waveform_data = pd.DataFrame()
     for walkID in walkIDs:
@@ -132,6 +143,7 @@ def get_waveform_data(subject, waveform_type):
         waveforms['walk'] = walkID
         waveforms['side'] = stance_side
         waveforms['bodymass'] = bodymass
+        waveforms['height'] = height
         
         waveform_data = pd.concat((waveform_data, waveforms))
     waveform_data['subject'] = subject
@@ -146,11 +158,27 @@ def get_bodymass(subject):
         subject (str): subject name.
     
     Returns:
-        bodymass (float): subject bodymass.
+        bodymass (float): subject bodymass in kg.
     """
     demographics = pd.read_excel('../data/demographics.xlsx', header=1)
     subject_row = demographics[demographics['subject']==subject]
     bodymass = subject_row['weight (kg)'].values[0]
+    
+    return bodymass
+
+
+def get_height(subject):
+    """extract height from the demographics file.
+    
+    Args:
+        subject (str): subject name.
+    
+    Returns:
+        height (float): subject height in cm.
+    """
+    demographics = pd.read_excel('../data/demographics.xlsx', header=1)
+    subject_row = demographics[demographics['subject']==subject]
+    bodymass = subject_row['height (cm)'].values[0]
     
     return bodymass
 
@@ -177,30 +205,54 @@ def get_raw_waveforms(subject, walkID, waveform_type):
                     + [grf + 'y' for grf in grf_column_starts]
                     + [grf + 'z' for grf in grf_column_starts])
     elif waveform_type=='kinematic':
-        filename = (subject_directory + '/RRA/results_rra_' + walkID + '/rra_'
-                    + walkID + '_Kinematics_q.sto')
+        filename = (subject_directory + '/RRA/results_rra_' + walkID
+                    + '/rra_' + walkID + '_Kinematics_q.sto')
         keywords = ['ankle', 'knee', 'hip']
     elif waveform_type=='kinetic':
-        filename = (subject_directory + '/RRA/results_rra_' + walkID + '/rra_' 
-                    + walkID + '_Actuation_force.sto')
+        filename = (subject_directory + '/RRA/results_rra_' + walkID
+                    + '/rra_' + walkID + '_Actuation_force.sto')
         keywords=['ankle', 'knee', 'hip']
     elif waveform_type=='jrf':
         filename = (subject_directory + '/SO_Custom/' + walkID
                     + '_results_JointRxn_ReactionLoads.sto')
         keywords=['fx', 'fy', 'fz']
+    elif waveform_type=='muscle force':
+        filename = (subject_directory + '/SO_Custom/' + walkID
+                    + '_results_forces.sto')
+        keywords = ['gasmed_r', 'gasmed_l',
+                    'gaslat_r', 'gaslat_l',
+                    'soleus_r', 'soleus_l',
+                    'fdl_r', 'fdl_l',
+                    'fhl_r', 'fhl_l',
+                    'perbrev_r', 'perbrev_l',
+                    'perlong_r', 'perlong_l',
+                    'tibpost_r', 'tibpost_l',
+
+                    'recfem_r', 'recfem_l',
+                    'vaslat_r', 'vaslat_l',
+                    'vasint_r', 'vasint_l',
+                    'vasmed_r', 'vasmed_l',
+                   ]
+    elif waveform_type=='power':
+        pass
     else:
         raise Exception('Unknown waveform type. Expected "grf", "kinematic", \
-                        "kinetic", or "jrf" but received:', waveform_type)
+                        "kinetic", "jrf", "muscle force", or "power" but received:',
+                        waveform_type)
     
-    header_length = get_header_length(filename)
-    waveforms = pd.read_csv(filename, sep='\t', header=header_length, index_col=False)
-    time = waveforms['time'] # save for later
+    if waveform_type=='power':
+        filename = (subject_directory + '/SO_Custom/' + walkID + '_results_power.csv')
+        waveforms = pd.read_csv(filename, index_col=False)
+    else:
+        header_length = get_header_length(filename)
+        waveforms = pd.read_csv(filename, sep='\t', header=header_length, index_col=False)
+        time = waveforms['time'] # save for later
     
-    # keep only kw waveforms
-    waveform_names = [waveform for waveform in waveforms
-                      if any(kw in waveform for kw in keywords)]
-    waveforms = waveforms[waveform_names]        
-    waveforms['time'] = time
+        # keep only kw waveforms
+        waveform_names = [waveform for waveform in waveforms
+                          if any(kw in waveform for kw in keywords)]
+        waveforms = waveforms[waveform_names]        
+        waveforms['time'] = time
     return waveforms
 
 
@@ -285,7 +337,9 @@ def keep_stance_waveform_only(waveforms, waveform_type, stance_side):
     else:
         key1 = '_' + stance_side + '_'
         key2 = '_' + stance_side
-        columns_to_keep = [col for col in waveforms if key1 in col or col[-2:]==key2]
+        key3 = '_' + stance_side + '/'
+        columns_to_keep = [col for col in waveforms 
+                           if key1 in col or col[-2:]==key2 or key3 in col]
 
         # filter
         stance_waveforms = waveforms[columns_to_keep]
@@ -293,9 +347,11 @@ def keep_stance_waveform_only(waveforms, waveform_type, stance_side):
         # rename to omit 'r'/'l'
         name_map = {}
         for col in stance_waveforms:
-            name_map[col] = col.replace(key1,'_')
+            name_map[col] = col.replace(key1, '_')
             if name_map[col][-2:]==key2:
                 name_map[col] = name_map[col][:-2]
+            if '/' in col:
+                name_map[col] = col.replace(key3, '/')
 
         stance_waveforms = stance_waveforms.rename(columns=name_map)
     
@@ -375,9 +431,10 @@ def average_subject_trials(waveforms):
     for subject in set(waveforms['subject']):
         subject_data = waveforms[waveforms['subject']==subject]
         bodymass = list(set(list(subject_data['bodymass'])))
+        height = list(set(list(subject_data['height'])))
         side = list(set(list(subject_data['side'])))
 
-        subject_data = subject_data.drop(columns=['side', 'subject', 'bodymass'])
+        subject_data = subject_data.drop(columns=['side', 'subject', 'bodymass', 'height'])
         headers = list(subject_data)
             
         for col in subject_data:
@@ -386,6 +443,7 @@ def average_subject_trials(waveforms):
         subject_mean = pd.DataFrame(subject_mean, columns=headers)
         subject_mean['subject'] = subject
         subject_mean['bodymass'] = bodymass[0]
+        subject_mean['height'] = height[0]
         subject_mean['side'] = side[0]
         avg_waveforms = avg_waveforms.append(subject_mean, ignore_index=True)
     
